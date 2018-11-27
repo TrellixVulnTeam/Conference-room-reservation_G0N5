@@ -1,23 +1,16 @@
 const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
-// const {freebusy} = require('freebusy');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-//https://www.googleapis.com/calendar/v3/freeBusy
+
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
 const TOKEN_PATH = 'token.json';
-
-
-// Load client secrets from a local file.
-fs.readFile('credentials.json', (err, content) => {
-  if (err) return console.log('Error loading client secret file:', err);
-  // Authorize a client with credentials, then call the Google Calendar API.
-  authorize(JSON.parse(content), listEvents);
-});
+let schejule = new Array();
+let count = 0;
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
@@ -36,13 +29,23 @@ function authorize(credentials, callback) {
     oAuth2Client.setCredentials(JSON.parse(token));
     callback(oAuth2Client);
   });
+  console.log("1");
 }
+
+// Load client secrets from a local file.
+fs.readFile('credentials.json', (err, content) => {
+  if (err) return console.log('Error loading client secret file:', err);
+  // Authorize a client with credentials, then call the Google Calendar API.
+  authorize(JSON.parse(content), listEvents);
+  console.log("2");
+});
 
 /**
  * Get and store new token after prompting for user authorization, and then
  * execute the given callback with the authorized OAuth2 client.
  * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
  * @param {getEventsCallback} callback The callback for the authorized client.
+ *普段は通らない
  */
 function getAccessToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
@@ -74,33 +77,30 @@ function getAccessToken(oAuth2Client, callback) {
  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
  */
 function listEvents(auth) {
-  const cal = google.calendar({version: 'v3', auth});
-  var calendar = '655147675926-96q8617upo9emvlerck9s5o58h7apref.apps.googleusercontent.com';
-
-  var tom3pm = new Date();
-  tom3pm.setDate(25);
-  tom3pm.setHours(15, 0, 0);
-
-  var tom4pm = new Date();
-  tom3pm.setDate(25);
-  tom3pm.setHours(16, 0, 0);
-
-  cal.freebusy.query({
-    resource: {
-      timeMin: new Date(tom3pm).toISOString(),
-      timeMax: new Date(tom4pm).toISOString(),
-      timeZone: 'Asia/Tokyo',
-      items: [{ id: calendar }]
-    }
-  }, (result) => {
-    var busy = result.data.calendar[calendar].busy;
-    var errors = result.data.calendar[calendar].errors;
-    if (undefined !== errors) {
-        console.error('Check this this calendar has public free busy visibility');
-    } else if (busy.length !== 0) {
-        console.log('Busy');
-    } else {
-        console.log('Free');
+  const calendar = google.calendar({version: 'v3', auth});
+  // var calendarID = '65547675926-96q8617upo9emvlerck9s5o58h7apref.apps.googleusercontent.com';
+  const timeMin = '2018-11-26T00:00:00+09:00';
+  const timeMax = '2018-11-27T00:00:00+09:00';
+  // const timeMin = '2018-11-26';
+  // const timeMax = '2018-11-27';
+  calendar.events.list({
+    calendarId: 'smurano@mikilab.doshisha.ac.jp',
+    // timeMin: (new Date()).toISOString(),
+    // maxResults: 10
+    timeMin: timeMin,
+    timeMax: timeMax,
+    singleEvents: true,
+    orderBy: 'startTime',
+    timeZone: 'Asia/Tokyo',
+  }, (err, res) => {
+    if (err) return console.log('The API returned an error: ' + err);
+      const events = res.data.items;
+    if (events.length) {
+      events.map((event, i) => {
+        const start = events[i].start.dateTime || events[i].start.date; //開始時間
+        const end = events[i].end.dateTime || events[i].end.date; //終了時間
+        console.log(`${start}-${end}に${events[i].summary}`);
+      });
     }
   });
 }
