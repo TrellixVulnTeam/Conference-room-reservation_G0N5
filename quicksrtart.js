@@ -9,13 +9,8 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar'];
 // created automatically when the authorization flow completes for the first
 // time.
 const TOKEN_PATH = 'token.json';
-
-// Load client secrets from a local file.
-fs.readFile('credentials.json', (err, content) => {
-  if (err) return console.log('Error loading client secret file:', err);
-  // Authorize a client with credentials, then call the Google Calendar API.
-  authorize(JSON.parse(content), listEvents);
-});
+let schejule = new Array();
+let count = 0;
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
@@ -34,13 +29,23 @@ function authorize(credentials, callback) {
     oAuth2Client.setCredentials(JSON.parse(token));
     callback(oAuth2Client);
   });
+  console.log("1");
 }
+
+// Load client secrets from a local file.
+fs.readFile('credentials.json', (err, content) => {
+  if (err) return console.log('Error loading client secret file:', err);
+  // Authorize a client with credentials, then call the Google Calendar API.
+  authorize(JSON.parse(content), listEvents);
+  console.log("2");
+});
 
 /**
  * Get and store new token after prompting for user authorization, and then
  * execute the given callback with the authorized OAuth2 client.
  * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
  * @param {getEventsCallback} callback The callback for the authorized client.
+ *普段は通らない
  */
 function getAccessToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
@@ -73,7 +78,7 @@ function getAccessToken(oAuth2Client, callback) {
  */
 function listEvents(auth) {
   const calendar = google.calendar({version: 'v3', auth});
-  // var calendarID = '655147675926-96q8617upo9emvlerck9s5o58h7apref.apps.googleusercontent.com';
+  // var calendarID = '65547675926-96q8617upo9emvlerck9s5o58h7apref.apps.googleusercontent.com';
   const timeMin = '2018-11-26T00:00:00+09:00';
   const timeMax = '2018-11-27T00:00:00+09:00';
   // const timeMin = '2018-11-26';
@@ -94,18 +99,18 @@ function listEvents(auth) {
       events.map((event, i) => {
         const start = events[i].start.dateTime || events[i].start.date; //開始時間
         const end = events[i].end.dateTime || events[i].end.date; //終了時間
-        if(i == 0){
-          if(timeMin != start){ console.log(`${timeMin} - ${start}`); }
+        if(i === 0){
+          if(timeMin !== start){ schejule.push(`${timeMin}から${start}まで\n`); console.log(`${schejule[count]}`); count++; }
         }
-        else if(i == events.length - 1){
+        else if(i === events.length - 1){
           const before_start = events[i-1].start.dateTime || events[i-1].start.date;
           const before_end = events[i-1].end.dateTime || events[i-1].end.date;
-          if(before_end != start){ console.log(`${before_end} - ${start}`); }
-          if(end != timeMax){ console.log(`${end} - ${timeMax}`); }
+          if(before_end !== start){ schejule.push(""+before_end+" - "+start+""); console.log(`${schejule[count]}`); count++; }
+          if(end !== timeMax){ schejule.push(""+end+" - "+timeMax+""); console.log(`${schejule[count]}`); count++; }
         }
         else{
           const before_end = events[i-1].end.dateTime || events[i-1].end.date;
-          if(before_end != start){ console.log(`${before_end} - ${start}`); }
+          if(before_end !== start){ schejule.push(""+before_end+" - "+start+""); console.log(`${schejule[count]}`); count++; }
         }
       });
     } else {
@@ -113,3 +118,25 @@ function listEvents(auth) {
     }
   });
 }
+
+let promise = new Promise((resolve, reject) => { // #1
+  console.log('#1')
+  resolve('Hello ')
+})
+
+promise.then((msg) => { // #2
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      console.log('#2')
+      resolve(msg + "I'm ")
+    }, 500)
+  })
+}).then((msg) => { // #3
+  console.log('#3')
+  return msg + 'Jeccy.'
+}).then((msg) => { // #4
+  console.log('#4')
+  console.log(msg)
+}).catch(() => { // エラーハンドリング
+  console.error('Something wrong!')
+})

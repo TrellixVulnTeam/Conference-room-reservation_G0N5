@@ -1,5 +1,5 @@
 'use strict';
-const async = require('async');
+const co = require('co');
 
 process.env.DEBUG = 'actions-on-google:*';
 const App = require('actions-on-google').DialogflowApp;
@@ -12,7 +12,6 @@ let timeMax = null;
 let flag = null;
 let schejule = new Array();
 let spacetime = "";
-let check = "";
 let count = 0;
 
 const fs = require('fs');
@@ -29,25 +28,42 @@ exports.plan = functions.https.onRequest((request, response) => {
     timeMin = app.getArgument(DATE_ARG) + 'T00:00:00+09:00';
     timeMax = app.getArgument(DATE_ARG) + 'T23:59:59+09:00';
 
-    fs.readFile('credentials.json', (err, content) => {
-      if (err) return console.log('Error loading client secret file:', err);
-      // Authorize a client with credentials, then call the Google Calendar API.
-      async.series([
-        function(callback) {
+    co(function *() {
+      // 1番目の処理。特にデータを受け取らないで動くものの場合
+          // 変数の中で、yield を頭に付けて関数を動かす。
+      let syori1 = yield func_1();
+      // syori1の値を使って２番目の関数が処理をする
+      let syori2 = yield func_2(syori1);
+    });
+
+    function func_1() {
+    // promiseで包む
+    return new Promise((resolve) => {
+        console.log('何かしたい処理はPromiseでくるんだ中に書く');
+        let res = '処理が終わって結果を返したい場合は resolve()の中で返す。'
+        // Load client secrets from a local file.
+        fs.readFile('credentials.json', (err, content) => {
+          if (err) return console.log('Error loading client secret file:', err);
+          // Authorize a client with credentials, then call the Google Calendar API.
           authorize(JSON.parse(content), listEvents);
-          setTimeout(callback, 1000);
-        }, function(callback) {
+        })
+        // 関数の処理が終わったらresolve();する。
+        resolve(res);
+      });
+    }
+
+    function func_2(request) {
+      // promiseで包む
+      return new Promise((resolve) => {
+          // 受け取ったrequestを処理してresponseを返す
+          let response = 'Response: ' + request
           actionMap.set(NAME_ACTION, combining_time);
           app.handleRequest(actionMap);
-          return console.log('処理終了');
-        }
-      ], function(err, results) {
-        if (err) {
-          return console.log('err[' + err + ']');
-        }
-      });
-    })
 
+          // 関数の処理が終わったらresolve();する。
+          resolve(response);
+      });
+    }
 
     //oAuth認証
     function authorize(credentials, callback) {
@@ -112,17 +128,17 @@ exports.plan = functions.https.onRequest((request, response) => {
             const start = events[i].start.dateTime || events[i].start.date; // 開始時間
             const end = events[i].end.dateTime || events[i].end.date; //終了時 間
             if(i === 0){
-              if(timeMin !== start){ schejule.push(`${timeMin}から${start}まで\n`); console.log(`${schejule[count]}`); count++; }
+              if(timeMin !== start){ schejule.push(""+timeMin+"から"+start+"ま で"); console.log(`${schejule[count]}`); count++; }
             }
             else if(i === events.length - 1){
               const before_start = events[i-1].start.dateTime ||  events[i-1].start.date;
               const before_end = events[i-1].end.dateTime ||  events[i-1].end.date;
-              if(before_end !== start){ schejule.push(`${before_end}から${start}まで\n`); console.log(`${schejule[count]}`); count++; }
-              if(end !== timeMax){ schejule.push(`${end}から${timeMax}まで\n`); console.log(`${schejule[count]}`); count++; }
+              if(before_end !== start){ schejule.push(""+before_end+"か ら"+start+"まで"); console.log(`${schejule[count]}`); count++; }
+              if(end !== timeMax){ schejule.push(""+end+"から"+timeMax+"まで"); console.log(`${schejule[count]}`); count++; }
             }
             else{
               const before_end = events[i-1].end.dateTime || events[i-1].end.date;
-              if(before_end !== start){  schejule.push(`${before_end}から${start}まで\n`); console.log(`${schejule[count]}`); count++; }
+              if(before_end !== start){  schejule.push(""+before_end+"から"+start+"まで"); console.log(`${schejule[count]}`); count++; }
             }
           });
         } else {
@@ -135,11 +151,8 @@ exports.plan = functions.https.onRequest((request, response) => {
      for (var i = 0; i < schejule.length; i++) {
        spacetime += schejule[i];
      }
-     if(spacetime === check){ app.tell(`その日の予定は空いています`);}
-     else { app.tell(`${spacetime}が空いています．`); }
-     for (i = 0; i < schejule.length; i++) {
-       schejule[i] = "";
-     }
+     app.tell(""+spacetime+"が空いています．");
+     schejule = new Array();
      spacetime = "";
    }
 });
